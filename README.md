@@ -1,10 +1,13 @@
 
-# <img src="https://api.iconify.design/lucide:dna.svg?color=%2338bdf8" alt="BioInsight.AI Logo" width="32" height="32" align="top"> BioInsight.AI
+# <img src="https://api.iconify.design/lucide:activity.svg?color=%230ea5e9" alt="BioInsight.AI Logo" width="32" height="32" align="top"> BioInsight.AI
 
 ### The Live Scientific Intelligence Platform
 **Powered by Google Gemini 2.5 Flash & Parallel Swarm Intelligence**
 
 BioInsight.AI is a next-generation scientific intelligence platform designed to bridge the gap between static archives and real-time discovery. We track breakthrough research in **Cardiovascular Disease (CVD)**, **Chronic Kidney Disease (CKD)**, **Metabolic Diseases (MASH/NASH/Diabetes/Obesity)**, and **Real-World Evidence (RWE)** using an optimized, cache-backed AI swarm.
+
+> **⚠️ Disclaimer: Research Use Only**  
+> BioInsight.AI aggregates and analyzes public scientific data using Generative AI. While we use strict search grounding to verify sources, all findings should be independently verified against the original publication. This tool is not for clinical decision-making.
 
 ---
 
