@@ -1,29 +1,68 @@
 
-# BioInsight.AI
+# <img src="https://api.iconify.design/lucide:dna.svg?color=%2338bdf8" alt="BioInsight.AI Logo" width="32" height="32" align="top"> BioInsight.AI
 
-A live scientific intelligence platform tracking CVD, CKD, MASH, Diabetes, and Obesity.
+### The Live Scientific Intelligence Platform
+**Powered by Google Gemini 2.5 Flash & Parallel Swarm Intelligence**
 
-## Setup Instructions
+BioInsight.AI is a next-generation scientific intelligence platform designed to bridge the gap between static archives and real-time discovery. We track breakthrough research in **Cardiovascular Disease (CVD)**, **Chronic Kidney Disease (CKD)**, **Metabolic Diseases (MASH/NASH/Diabetes/Obesity)**, and **Real-World Evidence (RWE)** using an optimized, cache-backed AI swarm.
 
-This application requires a Gemini API key to run the live analysis streams.
+---
 
-**Local Development**:
-Create a `.env` or `.env.local` file in the root directory:
+## ✨ Key Capabilities
+
+* **Concurrent Swarm Execution**: Launches parallel Google Search grounding queries across 5 distinct journal clusters (Nature/NEJM/Lancet, JAMA/Science/Cell, Society Journals, Wiley/Elsevier, and Springer/PubMed) simultaneously, drastically reducing query latency.
+* **Real-Time Streaming UI**: Results are streamed to the client immediately as each batch resolves via `Promise.race` logic, providing instant visual feedback.
+* **RWE Aggregation**: Specifically targets and captures real-world evidence across federated EHR registries, including Veradigm, Truveta, TriNetX, CPRD, and Optum.
+* **Shadow Literature Detection**: High-recall methodologies designed to capture industry-led white papers and real-world GLP-1 adherence reports.
+* **Signal Denoising**: Implements "Negative Prompt Tuning" to strictly exclude editorials, generic reviews, and opinion pieces.
+* **Fallback Tolerant Parsing**: Employs deep validation, JSON block extraction, and inline bracket matching to ensure stability even when the AI returns unformatted text or confidence intervals in free text.
+
+## 🛠 Technology Stack
+
+* **Frontend**: React 19, Tailwind CSS, Lucide Icons, Recharts
+* **Backend**: Node.js / Express (Proxying requests to protect API keys)
+* **AI / Agentic Logic**: Google Gemini (`@google/genai` SDK), Google Search Grounding
+* **Build System**: Vite & esbuild
+
+## 🚀 Getting Started
+
+This application requires a **Gemini API key** to run the live analysis streams.
+
+### 1. Local Development
+
+Install the dependencies:
+```bash
+npm install
+```
+
+Create a `.env` file in the root directory and add your key:
 ```env
 GEMINI_API_KEY=your_actual_api_key_here
 ```
 
-**Server-Side Deployment** (e.g., Cloud Run, Vercel, Node server):
+Start the development server:
+```bash
+npm run dev
+```
+
+### 2. Server-Side Deployment (e.g., Cloud Run, Vercel)
+
 Configure the `GEMINI_API_KEY` environment variable in your deployment environment's settings. 
+The application uses a secure backend proxy to ensure the key is never exposed to the client browser.
 
-The application uses a secure backend proxy to ensure the key is never exposed to the client.
+To build and run in production mode:
+```bash
+npm run build
+npm start
+```
 
-## 🚀 Version 2.3: Registry-Aware Intelligence
-* **RWE Aggregation**: Now scans federated EHR registries including **Veradigm, Truveta, TriNetX, CPRD, and Optum**.
-* **Parallel Swarm Architecture**: Launches concurrent Google Search grounding queries across 5 distinct journal clusters (Nature/NEJM/Lancet, JAMA/Science/Cell, Society Journals, Wiley/Elsevier, and Springer/PubMed) per active topic, streaming results to the UI instantly as each batch resolves.
-* **Shadow Literature Detection**: Captured industry-led white papers and real-world GLP-1 adherence reports.
-* **Semantic Anchors**: High-recall methodology tracking for Claims Analysis and Federated EHR studies.
-* **Fallback Tolerant Parsing**: Employs multiple stages of JSON block extraction and inline bracket matching for robust handling of confidence intervals in free text.
+## 📝 Release Notes
+
+### Version 2.3: Registry-Aware Intelligence
+* **RWE Aggregation**: Now scans federated EHR registries.
+* **Parallel Swarm Architecture**: Launches concurrent Google Search grounding queries, streaming results to the UI instantly.
+* **Unified Liver Disease Tracking**: MASH, NASH, and MASLD are now consolidated into a single high-recall topic channel.
+* **Historical Patent Search**: Automatically maps modern terms (MASH) to historical synonyms (NASH) to recover IP records from 2018–2023.
 
 ---
 *Developed by Vivek Das • Built with Google Gemini 2.5 Flash*
