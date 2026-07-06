@@ -38,6 +38,14 @@ const TOPIC_EXPANSION: Record<string, string> = {
     'CKD': '("Chronic Kidney Disease" OR "CKD" OR "Renal Failure" OR "eGFR")'
 };
 
+const PATENT_EXPANSION: Record<string, string> = {
+    'MASH / NASH': '("THR-beta agonist" OR "FGF21 analog" OR "resmetirom" OR "steatohepatitis")',
+    'Obesity': '("GLP-1" OR "GIP" OR "Semaglutide" OR "Tirzepatide" OR "Retatrutide" OR "incretin receptor agonist")',
+    'Diabetes': '("SGLT2 inhibitor" OR "GLP-1 receptor agonist" OR "insulin analog" OR "DPP-4")',
+    'CVD': '("PCSK9 inhibitor" OR "statin" OR "bempedoic acid" OR "ezetimibe" OR "cardiovascular")',
+    'CKD': '("SGLT2 inhibitor" OR "ACE inhibitor" OR "ARB" OR "finerenone" OR "renal")'
+};
+
 // Swarm Definitions
 const SWARM_A_SITES = "site:nature.com OR site:nejm.org OR site:thelancet.com OR site:jamanetwork.com OR site:science.org OR site:cell.com OR site:diabetesjournals.org OR site:ahajournals.org";
 const SWARM_B_SITES = "site:academic.oup.com OR site:onlinelibrary.wiley.com OR site:sciencedirect.com OR site:link.springer.com OR site:pubmed.ncbi.nlm.nih.gov";
@@ -139,9 +147,9 @@ const resolveUrl = async (url: string): Promise<string> => {
 export const mapToDiseaseTopic = (input: string, title: string): DiseaseTopic => {
     const combined = (input + " " + title).toUpperCase();
     if (combined.includes('NASH') || combined.includes('MASH') || combined.includes('MASLD') || combined.includes('LIVER') || combined.includes('STEATO')) return DiseaseTopic.MASH;
-    if (combined.includes('OBESITY') || combined.includes('WEIGHT')) return DiseaseTopic.Obesity;
     if (combined.includes('DIABETES') || combined.includes('T2D') || combined.includes('GLYCAEMIC')) return DiseaseTopic.Diabetes;
     if (combined.includes('CKD') || combined.includes('KIDNEY') || combined.includes('RENAL') || combined.includes('EGFR')) return DiseaseTopic.CKD;
+    if (combined.includes('OBESITY') || combined.includes('WEIGHT') || combined.includes('GLP-1') || combined.includes('TIRZEPATIDE') || combined.includes('SEMAGLUTIDE') || combined.includes('RETATRUTIDE') || combined.includes('CAGRISEMA') || combined.includes('INCRETIN') || combined.includes('ORFORGLIPRON')) return DiseaseTopic.Obesity;
     return DiseaseTopic.CVD;
 };
 
@@ -205,11 +213,11 @@ const runSwarmPulse = async (swarmName: string, query: string, instruction: stri
             
             if (!matchedChunk) {
                 if (DEBUG) {
-                    console.debug(`Dropped item: "${item.title}"`);
+                    console.log(`Dropped item: "${item.title}"`);
                     if (bestChunk) {
-                        console.debug(`  Closest chunk: "${bestChunk.web?.title}" (overlap: ${bestOverlap.toFixed(2)})`);
+                        console.log(`  Closest chunk: "${bestChunk.web?.title}" (overlap: ${bestOverlap.toFixed(2)})`);
                     } else {
-                        console.debug(`  No chunks available.`);
+                        console.log(`  No chunks available.`);
                     }
                 }
                 continue;
@@ -376,8 +384,8 @@ export async function* fetchAiAnalysisStream(activeTopics: string[]): AsyncGener
 }
 
 export async function* fetchPatentStream(activeTopics: string[]): AsyncGenerator<SwarmResult, void, unknown> {
-    const topicStr = activeTopics.map(t => TOPIC_EXPANSION[t] || `"${t}"`).join(' OR ');
-    const dateCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const topicStr = activeTopics.map(t => PATENT_EXPANSION[t] || `"${t}"`).join(' OR ');
+    const dateCutoff = new Date(Date.now() - 540 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const query = `(site:patents.google.com) ${topicStr} after:${dateCutoff}`;
     const patentResults = await runSwarmPulse(
         "Patent Scout", 
