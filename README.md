@@ -13,10 +13,10 @@ BioInsight.AI is a next-generation scientific intelligence platform designed to 
 
 ## ✨ Key Capabilities
 
-* **Concurrent Swarm Execution**: Launches parallel Google Search grounding queries across 5 distinct journal clusters (Nature/NEJM/Lancet, JAMA/Science/Cell, Society Journals, Wiley/Elsevier, and Springer/PubMed) simultaneously, drastically reducing query latency.
+* **Concurrent Swarm Execution**: Launches one search per active disease topic, run in parallel across topics, against a single consolidated set of allowed academic and journal domains.
 * **Real-Time Streaming UI**: Results are streamed to the client immediately as each batch resolves via `Promise.race` logic, providing instant visual feedback.
 * **RWE Aggregation**: Specifically targets and captures real-world evidence across federated EHR registries, including Veradigm, Truveta, TriNetX, CPRD, and Optum.
-* **Shadow Literature Detection**: High-recall methodologies designed to capture industry-led white papers and real-world GLP-1 adherence reports.
+* **Strict Domain Verification**: Enforces a strict post-retrieval domain allowlist to drop industry/consumer sources (news sites, patient-advocacy blogs, trade publications), ensuring only rigorous academic literature is surfaced.
 * **Signal Denoising**: Implements "Negative Prompt Tuning" to strictly exclude editorials, generic reviews, and opinion pieces.
 * **Fallback Tolerant Parsing**: Employs deep validation, JSON block extraction, and inline bracket matching to ensure stability even when the AI returns unformatted text or confidence intervals in free text.
 
@@ -60,6 +60,11 @@ npm start
 ```
 
 ## 📝 Release Notes
+
+### Version 2.4: Deep Mechanism & IP Intelligence
+* **Mechanism-First Patent Search**: Implemented a dedicated `PATENT_EXPANSION` strategy that searches for patents using mechanisms of action and molecules (e.g., THR-beta agonists, SGLT2 inhibitors) rather than just disease names, capturing obfuscated IP filings with an expanded 18-month lookback window.
+* **Intelligent Topic Disambiguation**: Refined classification logic for shared drug classes (like GLP-1s) where Diabetes receives routing priority when explicitly mentioned, otherwise falling through to Obesity (while CKD requires explicit renal/kidney keywords).
+* **Direct Access Link Polisher**: Integrated an AI-driven module that automatically attempts to locate open-access full-text PDFs for discovered papers.
 
 ### Version 2.3: Registry-Aware Intelligence
 * **RWE Aggregation**: Now scans federated EHR registries.

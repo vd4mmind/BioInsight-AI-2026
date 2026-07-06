@@ -39,34 +39,48 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           {/* Release Notes Section - NEW */}
           <section className="bg-gradient-to-r from-blue-900/40 to-teal-900/40 p-4 rounded-xl border border-blue-500/30">
             <h3 className="text-sm font-bold text-blue-200 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-yellow-400" /> New in Version 2.3
+              <Sparkles className="w-4 h-4 text-yellow-400" /> New in Version 2.4
             </h3>
             <ul className="space-y-2 text-xs text-slate-300">
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong className="text-white">RWE Aggregation:</strong> Now scans federated EHR registries including Veradigm, Truveta, TriNetX, CPRD, and Optum.
+                  <strong className="text-white">Mechanism-First Patent Search:</strong> Searches for patents using mechanisms of action and molecules (e.g., THR-beta agonists, SGLT2 inhibitors) with an expanded 18-month lookback.
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong className="text-white">Parallel Swarm Architecture:</strong> Launches concurrent Google Search grounding queries across 5 distinct journal clusters per active topic, streaming results to the UI instantly as each batch resolves.
+                  <strong className="text-white">Intelligent Topic Disambiguation:</strong> Refined classification for shared drug classes (like GLP-1s) where Diabetes receives routing priority when explicitly mentioned, falling through to Obesity (while CKD requires explicit renal keywords).
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <Check className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
                 <span>
-                  <strong className="text-white">Fallback Tolerant Parsing:</strong> Employs multiple stages of JSON block extraction and inline bracket matching for robust handling of confidence intervals in free text.
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <Check className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
-                <span>
-                  <strong className="text-white">Shadow Literature & Semantic Anchors:</strong> Captures industry-led white papers and adherence reports using high-recall methodology tracking.
+                  <strong className="text-white">Direct Access Link Polisher:</strong> Integrated an AI-driven module that automatically locates open-access full-text PDFs for discovered papers.
                 </span>
               </li>
             </ul>
+            
+            <div className="mt-4 pt-4 border-t border-blue-500/20">
+              <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3">
+                Version 2.3 Highlights
+              </h3>
+              <ul className="space-y-2 text-xs text-slate-400">
+                <li className="flex items-start gap-2">
+                  <Check className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="text-slate-300">RWE Aggregation:</strong> Scans federated EHR registries including Veradigm, Truveta, TriNetX, CPRD, and Optum.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Check className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
+                  <span>
+                    <strong className="text-slate-300">Parallel Swarm Architecture:</strong> Launches concurrent Google Search grounding queries, streaming results to the UI instantly.
+                  </span>
+                </li>
+              </ul>
+            </div>
           </section>
           
           {/* Mission */}
@@ -120,7 +134,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           {/* How Live Feed Works */}
           <section className="bg-slate-900/30 p-4 rounded-xl border border-dashed border-slate-700">
             <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-2 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-blue-400" /> Architecture 2.3 Flow
+              <Zap className="w-4 h-4 text-blue-400" /> Architecture 2.4 Flow
             </h3>
             <ol className="list-decimal list-inside space-y-3 text-xs text-slate-400">
               <li>
@@ -129,7 +143,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               </li>
               <li>
                 <span className="text-slate-300 font-bold">Concurrent Swarm Execution:</span> 
-                If fresh data is needed, we launch parallel grounding queries across distinct journal clusters (Nature, JAMA, Elsevier, etc.) simultaneously.
+                If fresh data is needed, we launch one search per active topic in parallel against a single consolidated set of allowed academic and journal domains.
               </li>
               <li>
                 <span className="text-slate-300 font-bold">Streaming & Verification:</span> 
