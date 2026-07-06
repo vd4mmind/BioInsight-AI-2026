@@ -13,6 +13,23 @@ const CACHE_TTL_PATENT = 7 * 24 * 60 * 60 * 1000;
 
 const memoryCache = new Map<string, string>();
 
+let searchCallCount = 0;
+let lastResetDateStr = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }).split(',')[0];
+
+function checkAndIncrementSearchBudget(): boolean {
+    const todayStr = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }).split(',')[0];
+    if (todayStr !== lastResetDateStr) {
+        searchCallCount = 0;
+        lastResetDateStr = todayStr;
+    }
+    
+    if (searchCallCount >= 1400) {
+        return false;
+    }
+    searchCallCount++;
+    return true;
+}
+
 const TOPIC_EXPANSION: Record<string, string> = {
     'MASH / NASH': '("MASH" OR "NASH" OR "MASLD" OR "Steatohepatitis" OR "FIB-4")',
     'Obesity': '("Obesity" OR "Weight Loss" OR "Semaglutide" OR "Tirzepatide" OR "GLP-1" OR "Incretin")',
@@ -118,13 +135,16 @@ export const mapToDiseaseTopic = (input: string, title: string): DiseaseTopic =>
     return DiseaseTopic.CVD;
 };
 
-const runSwarmPulse = async (swarmName: string, query: string, instruction: string, feedType: string): Promise<SwarmResult> => {
+const runSwarmPulse = async (swarmName: string, query: string, instruction: string, feedType: string, anchors: string): Promise<SwarmResult> => {
+    if (!checkAndIncrementSearchBudget()) {
+        return { papers: [], error: "Daily research quota reached, resets at midnight PT" };
+    }
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `Role: ${swarmName}. Search Query: \`${query}\`. Instruction: ${instruction}. 
             REQUIRED JSON Structure: [{url, title, date, journal, authors, topic, pubType, studyType, methodology, modality, highlight, target, context}]. 
-            ANCHORS: Ensure items have scientific evidence (p-values, HR, OR, or CI).
+            ANCHORS: ${anchors}
             Respond with ONLY a single \`\`\`json fenced code block containing the array — no other text before or after it.`,
             config: { temperature: 0.1, tools: [{ googleSearch: {} }] }
         });
@@ -236,39 +256,37 @@ export async function* fetchLiteratureAnalysisStream(activeTopics: string[]): As
     const cachedData = checkCache('live', activeTopics);
     if (cachedData) { yield { papers: cachedData, error: null }; return; }
 
-    const SITE_GROUPS = [
-        "site:nature.com OR site:nejm.org OR site:thelancet.com",
-        "site:jamanetwork.com OR site:science.org OR site:cell.com",
-        "site:diabetesjournals.org OR site:ahajournals.org",
-        "site:academic.oup.com OR site:onlinelibrary.wiley.com OR site:sciencedirect.com",
-        "site:link.springer.com OR site:pubmed.ncbi.nlm.nih.gov"
-    ];
+    const MAJOR_JOURNALS = "site:nature.com OR site:nejm.org OR site:thelancet.com OR site:jamanetwork.com OR site:science.org OR site:cell.com OR site:diabetesjournals.org OR site:ahajournals.org OR site:pubmed.ncbi.nlm.nih.gov";
 
     const promises: Promise<SwarmResult>[] = [];
 
     for (const topic of activeTopics) {
         const topicExpansion = TOPIC_EXPANSION[topic] || `"${topic}"`;
         
-        for (const siteGroup of SITE_GROUPS) {
-            const query = `(${siteGroup}) (${topicExpansion}) after:2025-11-01`;
-            promises.push(runSwarmPulse(
-                "Literature Swarm", 
-                query, 
-                `Find recent scientific breakthroughs for ${topic}. Extract structured JSON.`, 
-                'live'
-            ));
-        }
+        const dateCutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const query = `(${MAJOR_JOURNALS}) (${topicExpansion}) after:${dateCutoff}`;
+        promises.push(runSwarmPulse(
+            "Literature Swarm", 
+            query, 
+            `Find recent scientific breakthroughs for ${topic}. Extract structured JSON.`, 
+            'live',
+            'Ensure items have scientific evidence (p-values, HR, OR, or CI).'
+        ));
+        await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     let anyError: SwarmError = null;
     const seenUrls = new Set<string>();
     let allCombined: PaperData[] = [];
 
-    const pending = new Set(promises.map(p => p.catch(error => ({ papers: [], error }) as SwarmResult).then(res => ({ p, res }))));
+    const pendingMap = new Map<Promise<SwarmResult>, Promise<{ p: Promise<SwarmResult>; res: SwarmResult }>>();
+    for (const p of promises) {
+        pendingMap.set(p, p.catch(error => ({ papers: [], error } as SwarmResult)).then(res => ({ p, res })));
+    }
 
-    while (pending.size > 0) {
-        const winner = await Promise.race(Array.from(pending));
-        pending.delete(winner.p);
+    while (pendingMap.size > 0) {
+        const winner = await Promise.race(pendingMap.values());
+        pendingMap.delete(winner.p);
 
         const res = winner.res;
         if (res.error) anyError = res.error as SwarmError;
@@ -302,26 +320,49 @@ export async function* fetchAiAnalysisStream(activeTopics: string[]): AsyncGener
     const topicStr = activeTopics.map(t => TOPIC_EXPANSION[t] || `"${t}"`).join(' OR ');
     
     // AI Pulse: Combined Scientific AI + Registry Insights
-    const aiQuery = `(${topicStr}) AND ("Machine Learning" OR "Real-World Evidence" OR "Registry Analysis") AND (${SWARM_B_SITES} OR ${REGISTRY_SITES}) after:2025-10-01`;
+    const dateCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const aiQuery = `(${topicStr}) AND ("Machine Learning" OR "Real-World Evidence" OR "Registry Analysis") AND (${SWARM_B_SITES} OR ${REGISTRY_SITES}) after:${dateCutoff}`;
     const aiResults = await runSwarmPulse(
         "AI/RWE Specialist", 
         aiQuery, 
         "Focus on AI/ML models in CVD/Metabolic and RWE from registries like Veradigm/Truveta. EXCLUDE company news without data.", 
-        'ai'
+        'ai',
+        'Ensure items have scientific evidence (p-values, HR, OR, or CI).'
     );
     yield aiResults;
 }
 
 export async function* fetchPatentStream(activeTopics: string[]): AsyncGenerator<SwarmResult, void, unknown> {
     const topicStr = activeTopics.map(t => TOPIC_EXPANSION[t] || `"${t}"`).join(' OR ');
-    const query = `(site:patents.google.com) ${topicStr} after:2025-01-01`;
+    const dateCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const query = `(site:patents.google.com) ${topicStr} after:${dateCutoff}`;
     const patentResults = await runSwarmPulse(
         "Patent Scout", 
         query, 
         "Find the latest IP filings for metabolic and cardiovascular therapies. Include historical synonyms for MASH/NASH.", 
-        'patent'
+        'patent',
+        'Ensure items are real patent applications or grants with an assignee, filing/publication date, and either claims language or a technical abstract — legal commentary or news about patents does not count.'
     );
     yield patentResults;
 }
 
-export const runLinkPolisher = async (paper: PaperData) => null;
+export const runLinkPolisher = async (paper: PaperData): Promise<string | null> => {
+    if (!checkAndIncrementSearchBudget()) {
+        return null;
+    }
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Find a direct PDF or full-text open access link for the scientific paper titled "${paper.title}" by ${paper.authors?.join(', ')}. If you find a direct PDF URL, return ONLY the URL as raw text. If you cannot find one, return nothing.`,
+            config: { temperature: 0.1, tools: [{ googleSearch: {} }] }
+        });
+        const url = response?.text?.trim();
+        if (url && url.startsWith('http')) {
+            return url;
+        }
+        return null;
+    } catch (e) {
+        console.error("runLinkPolisher Error:", e);
+        return null;
+    }
+};

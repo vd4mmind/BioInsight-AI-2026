@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { fetchLiteratureAnalysisStream, fetchAiAnalysisStream, fetchPatentStream } from "./server/geminiLogic";
+import { fetchLiteratureAnalysisStream, fetchAiAnalysisStream, fetchPatentStream, runLinkPolisher } from "./server/geminiLogic";
 
 async function startServer() {
   const app = express();
@@ -69,8 +69,18 @@ async function startServer() {
     streamToResponse(req, res, fetchPatentStream);
   });
 
-  app.post("/api/polish-link", requireRateLimit("polish"), (req, res) => {
-    res.json({ result: null });
+  app.post("/api/polish-link", requireRateLimit("polish"), async (req, res) => {
+    try {
+        const { paper } = req.body;
+        if (!paper) {
+            res.json({ result: null });
+            return;
+        }
+        const result = await runLinkPolisher(paper);
+        res.json({ result });
+    } catch (e) {
+        res.json({ result: null });
+    }
   });
 
   if (process.env.NODE_ENV !== "production") {

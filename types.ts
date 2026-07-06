@@ -75,7 +75,7 @@ export interface PaperData {
   isPolished?: boolean; 
 }
 
-export type SwarmError = 'auth' | 'rate_limit' | 'parse' | 'network' | null;
+export type SwarmError = string | null;
 
 export interface SwarmResult {
   papers: PaperData[];

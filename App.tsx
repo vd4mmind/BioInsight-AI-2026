@@ -170,9 +170,6 @@ const App: React.FC = () => {
                 const updater = targetTab === 'live' ? setLivePapers : (targetTab === 'ai' ? setAiPapers : setPatentPapers);
                 updater(prev => {
                     const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (isFirstBatch) {
-                        return [...batch.papers];
-                    }
                     const completelyNew = batch.papers.filter(np => !prev.some(op => normalize(op.title) === normalize(np.title)));
                     return [...prev, ...completelyNew];
                 });
@@ -183,6 +180,8 @@ const App: React.FC = () => {
             setScanStatus("API key rejected — check server configuration");
         } else if (finalError === 'rate_limit') {
             setScanStatus("Rate limited, try again in a minute");
+        } else if (finalError === 'Daily research quota reached, resets at midnight PT') {
+            setScanStatus(finalError);
         } else if (totalFetched === 0) {
             const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             setScanStatus(`No new results — showing your last successful scan from ${timeStr}`);

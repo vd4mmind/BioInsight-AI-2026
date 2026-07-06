@@ -73,6 +73,19 @@ export async function* fetchPatentStream(activeTopics: string[]): AsyncGenerator
     yield* fetchStream("/api/patents", activeTopics);
 }
 
-export const runLinkPolisher = async (paper: PaperData) => {
-    return null;
+export const runLinkPolisher = async (paper: PaperData): Promise<string | null> => {
+    try {
+        const response = await fetch("/api/polish-link", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paper })
+        });
+        if (response.ok) {
+            const data = await response.json();
+            return data.result || null;
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
 };
