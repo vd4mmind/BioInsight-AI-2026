@@ -126,6 +126,16 @@ const getDomain = (url: string) => {
     }
 };
 
+const resolveUrl = async (url: string): Promise<string> => {
+    if (!url.includes('vertexaisearch.cloud.google.com')) return url;
+    try {
+        const res = await fetch(url, { redirect: 'follow' });
+        return res.url;
+    } catch {
+        return url;
+    }
+};
+
 export const mapToDiseaseTopic = (input: string, title: string): DiseaseTopic => {
     const combined = (input + " " + title).toUpperCase();
     if (combined.includes('NASH') || combined.includes('MASH') || combined.includes('MASLD') || combined.includes('LIVER') || combined.includes('STEATO')) return DiseaseTopic.MASH;
@@ -135,7 +145,7 @@ export const mapToDiseaseTopic = (input: string, title: string): DiseaseTopic =>
     return DiseaseTopic.CVD;
 };
 
-const runSwarmPulse = async (swarmName: string, query: string, instruction: string, feedType: string, anchors: string): Promise<SwarmResult> => {
+const runSwarmPulse = async (swarmName: string, query: string, instruction: string, feedType: string, anchors: string, allowedDomains: string[] | null = null): Promise<SwarmResult> => {
     if (!checkAndIncrementSearchBudget()) {
         return { papers: [], error: "Daily research quota reached, resets at midnight PT" };
     }
@@ -153,7 +163,15 @@ const runSwarmPulse = async (swarmName: string, query: string, instruction: stri
         if (aiJson === null) return { papers: [], error: 'parse' };
         // @ts-ignore
         const groundingChunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+        
         if (aiJson.length === 0) return { papers: [], error: null };
+
+        const resolvedChunks = await Promise.all(groundingChunks.map(async (c: any) => {
+            if (!c.web?.uri) return { ...c, actualUrl: "", actualDomain: "" };
+            const actualUrl = await resolveUrl(c.web.uri);
+            const actualDomain = getDomain(actualUrl);
+            return { ...c, actualUrl, actualDomain };
+        }));
 
         const pulseResults: PaperData[] = [];
         for (const item of aiJson) {
@@ -163,9 +181,9 @@ const runSwarmPulse = async (swarmName: string, query: string, instruction: stri
             let bestOverlap = -1;
             const itemDomain = getDomain(item.url || "");
 
-            for (const c of groundingChunks) {
-                if (!c.web?.uri) continue;
-                if (item.url === c.web.uri) {
+            for (const c of resolvedChunks) {
+                if (!c.actualUrl) continue;
+                if (item.url && (item.url === c.actualUrl || item.url === c.web.uri || c.actualUrl.includes(item.url) || item.url.includes(c.actualUrl))) {
                     matchedChunk = c;
                     matchedViaUrl = true;
                     break;
@@ -179,13 +197,12 @@ const runSwarmPulse = async (swarmName: string, query: string, instruction: stri
                     matchedChunk = c;
                     break;
                 }
-                const chunkDomain = getDomain(c.web.uri);
-                if (itemDomain && chunkDomain && itemDomain === chunkDomain && overlap >= 0.15) {
+                if (itemDomain && c.actualDomain && itemDomain === c.actualDomain && !c.actualDomain.includes('google.com')) {
                     matchedChunk = c;
                     break;
                 }
             }
-
+            
             if (!matchedChunk) {
                 if (DEBUG) {
                     console.debug(`Dropped item: "${item.title}"`);
@@ -196,6 +213,13 @@ const runSwarmPulse = async (swarmName: string, query: string, instruction: stri
                     }
                 }
                 continue;
+            }
+
+            if (allowedDomains && allowedDomains.length > 0 && matchedChunk.actualUrl) {
+                const isAllowed = allowedDomains.some(d => matchedChunk.actualDomain.includes(d));
+                if (!isAllowed) {
+                    continue;
+                }
             }
 
             let parsedDate = parseDateFallback(item.date);
@@ -215,14 +239,14 @@ const runSwarmPulse = async (swarmName: string, query: string, instruction: stri
             }
             if (computedScore > 100) computedScore = 100;
 
-            const urlForId = matchedChunk.web.uri;
+            const urlForId = matchedChunk.actualUrl || matchedChunk.web.uri;
             const stableId = `${feedType}-${crypto.createHash('md5').update(urlForId).digest('hex').substring(0, 12)}`;
 
             pulseResults.push({
                 id: stableId,
                 title: item.title,
-                url: matchedChunk.web.uri,
-                journalOrConference: item.journal || new URL(matchedChunk.web.uri).hostname.replace('www.', ''),
+                url: urlForId,
+                journalOrConference: item.journal || matchedChunk.actualDomain || new URL(urlForId).hostname.replace('www.', ''),
                 date: parsedDate.toISOString().split('T')[0],
                 authors: Array.isArray(item.authors) ? item.authors : [item.authors || "Staff Research"],
                 topic: mapToDiseaseTopic(item.topic || "", item.title),
@@ -252,6 +276,23 @@ const runSwarmPulse = async (swarmName: string, query: string, instruction: stri
     }
 };
 
+export const ALLOWED_LITERATURE_DOMAINS = [
+    'nature.com', 'nejm.org', 'thelancet.com', 'jamanetwork.com', 
+    'science.org', 'cell.com', 'diabetesjournals.org', 'ahajournals.org', 
+    'pubmed.ncbi.nlm.nih.gov', 'academic.oup.com', 'onlinelibrary.wiley.com', 
+    'sciencedirect.com', 'link.springer.com', 'plos.org', 'frontiersin.org', 
+    'mdpi.com', 'biomedcentral.com', 'bmj.com', 'the-innovation.org'
+];
+
+export const ALLOWED_AI_RWE_DOMAINS = [
+    ...ALLOWED_LITERATURE_DOMAINS,
+    'veradigm.com', 'trinetx.com', 'truveta.com', 'optum.com', 'cprd.com'
+];
+
+export const ALLOWED_PATENT_DOMAINS = [
+    'patents.google.com'
+];
+
 export async function* fetchLiteratureAnalysisStream(activeTopics: string[]): AsyncGenerator<SwarmResult, void, unknown> {
     const cachedData = checkCache('live', activeTopics);
     if (cachedData) { yield { papers: cachedData, error: null }; return; }
@@ -270,7 +311,8 @@ export async function* fetchLiteratureAnalysisStream(activeTopics: string[]): As
             query, 
             `Find recent scientific breakthroughs for ${topic}. Extract structured JSON.`, 
             'live',
-            'Ensure items have scientific evidence (p-values, HR, OR, or CI).'
+            'Ensure items have scientific evidence (p-values, HR, OR, or CI).',
+            ALLOWED_LITERATURE_DOMAINS
         ));
         await new Promise(resolve => setTimeout(resolve, 2000));
     }
@@ -327,7 +369,8 @@ export async function* fetchAiAnalysisStream(activeTopics: string[]): AsyncGener
         aiQuery, 
         "Focus on AI/ML models in CVD/Metabolic and RWE from registries like Veradigm/Truveta. EXCLUDE company news without data.", 
         'ai',
-        'Ensure items have scientific evidence (p-values, HR, OR, or CI).'
+        'Ensure items have scientific evidence (p-values, HR, OR, or CI).',
+        ALLOWED_AI_RWE_DOMAINS
     );
     yield aiResults;
 }
@@ -341,7 +384,8 @@ export async function* fetchPatentStream(activeTopics: string[]): AsyncGenerator
         query, 
         "Find the latest IP filings for metabolic and cardiovascular therapies. Include historical synonyms for MASH/NASH.", 
         'patent',
-        'Ensure items are real patent applications or grants with an assignee, filing/publication date, and either claims language or a technical abstract — legal commentary or news about patents does not count.'
+        'Ensure items are real patent applications or grants with an assignee, filing/publication date, and either claims language or a technical abstract — legal commentary or news about patents does not count.',
+        ALLOWED_PATENT_DOMAINS
     );
     yield patentResults;
 }
